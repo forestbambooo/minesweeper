@@ -2,10 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>マインスイーパー</title>
   <style>
     :root {
-      --cell-size: 34px;
+      --cell-size: 34px;      /* PCサイズ */
       --bg: #f5f5f5;
       --board-bg: #dcdcdc;
     }
@@ -16,7 +17,7 @@
       justify-content: center;
       align-items: flex-start;
       min-height: 100vh;
-      padding-top: 40px;
+      padding: 20px 10px 40px;
     }
     .container {
       background: white;
@@ -24,6 +25,9 @@
       border-radius: 12px;
       padding: 14px;
       box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 420px; /* iPhoneでもはみ出さない */
+      box-sizing: border-box;
     }
     h1 {
       font-size: 18px;
@@ -34,19 +38,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
       gap: 8px;
       flex-wrap: wrap;
     }
     .status {
       font-weight: bold;
       font-size: 14px;
-    }
-    .info-group {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      font-size: 13px;
     }
     .btn {
       background: #2b7fff;
@@ -57,8 +55,13 @@
       font-size: 13px;
       cursor: pointer;
     }
-    .btn:hover {
-      background: #1666d4;
+    .btn:active {
+      opacity: 0.85;
+    }
+    /* タイマーを別行に */
+    .timer-row {
+      margin-bottom: 10px;
+      font-size: 13px;
     }
     #board {
       display: grid;
@@ -68,6 +71,7 @@
       background: var(--board-bg);
       padding: 2px;
       border-radius: 8px;
+      justify-content: center; /* 真ん中寄せ */
     }
     .cell {
       width: var(--cell-size);
@@ -82,6 +86,7 @@
       cursor: pointer;
       user-select: none;
       font-size: 14px;
+      touch-action: manipulation; /* ダブルタップ拡大を抑えめに */
     }
     .cell.open {
       background: #e0e3e7;
@@ -108,25 +113,59 @@
       color: #777;
       margin-top: 8px;
       text-align: center;
+      line-height: 1.5;
+    }
+
+    /* 画面が狭いときの調整（iPhone想定） */
+    @media (max-width: 480px) {
+      :root {
+        --cell-size: 30px; /* 少しだけ小さく */
+      }
+      h1 {
+        font-size: 16px;
+      }
+      .status {
+        font-size: 13px;
+      }
+      .timer-row {
+        font-size: 12px;
+      }
+      .btn {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+      #board {
+        gap: 1.5px;
+      }
+    }
+
+    /* さらに小さい端末向け */
+    @media (max-width: 360px) {
+      :root {
+        --cell-size: 28px;
+      }
+      .container {
+        padding: 10px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>マインスイーパー（HTML版）</h1>
-    <!-- 上の行 -->
+    <h1>マインスイーパー</h1>
+    <!-- 上段 -->
     <div class="top-bar">
       <div class="status" id="status">🙂 プレイ中</div>
       <div>残り地雷: <span id="minesLeft">10</span></div>
       <button class="btn" id="resetBtn">リセット</button>
     </div>
-    <!-- タイマーだけ別行 -->
+    <!-- タイマーを別の行に -->
     <div class="timer-row">
-      時間: <span id="timer">000.000</span> s
+      時間: <span id="timer">0.00</span> s
     </div>
     <div id="board"></div>
     <div class="footer">
-      左クリック: 開く / 右クリック: 旗<br>
+      左タップ: 開く / 長押し→右クリック代わりを入れてもいいです<br>
       ※最初の操作では爆発しない＆タイマー開始
     </div>
   </div>
@@ -153,14 +192,14 @@
 
     // タイマー関連
     let timerInterval = null;
-    let startTime = 0; // Date.now() を格納
+    let startTime = 0;
 
     function startTimer() {
       if (timerInterval) return;
       startTime = Date.now();
       timerInterval = setInterval(() => {
         updateTimerDisplay();
-      }, 10); // 10msごとに表示更新
+      }, 10);
     }
 
     function stopTimer() {
@@ -173,25 +212,16 @@
     function resetTimer() {
       stopTimer();
       startTime = 0;
-      timerElem.textContent = "000.000";
+      timerElem.textContent = "0.00";
     }
 
-    function updateTimerDisplay() {
-      // 経過ms
-      const elapsedMs = Date.now() - startTime;
-      // 最大を999.999秒に制限
-      const capped = Math.min(elapsedMs, 999999);
-      const seconds = capped / 1000;
-      // 秒とミリ秒を分解
-      const sInt = Math.floor(seconds); // 秒の整数部
-      const ms = Math.floor((seconds - sInt) * 1000); // ミリ秒部
+function updateTimerDisplay() {
+  const elapsedMs = Date.now() - startTime;
+  const capped = Math.min(elapsedMs, 999999); // 最大約1000秒に制限
+  const seconds = capped / 1000;              // ミリ秒→秒
+  timerElem.textContent = seconds.toFixed(2);
+}
 
-      // 3桁ゼロ埋め
-      const sStr = sInt.toString().padStart(3, '0');
-      const msStr = ms.toString().padStart(3, '0');
-
-      timerElem.textContent = `${sStr}.${msStr}`;
-    }
 
     function init() {
       boardElem.innerHTML = '';
@@ -203,7 +233,6 @@
       gameOver = false;
       openedCount = 0;
       flagsCount = 0;
-
       minesLeftElem.textContent = MINES;
       statusElem.textContent = '🙂 プレイ中';
       resetTimer();
@@ -258,7 +287,6 @@
         }
       }
 
-      // 数字計算
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
           if (!board[r][c].mine) {
@@ -288,7 +316,6 @@
       const r = +this.dataset.row;
       const c = +this.dataset.col;
       const cell = board[r][c];
-
       if (cell.open || cell.flag) return;
 
       if (firstClick) {
